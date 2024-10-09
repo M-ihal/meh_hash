@@ -143,6 +143,35 @@ public:
             return NULL;
         }
 
+        const TValue *const find(const TKey &key) const {
+            uint64_t hash = this->calc_hash(key);
+            uint64_t hash_start = hash;
+
+            while(true) {
+                if(!m_buckets[hash].is_occupied) {
+                    return NULL;
+                }
+
+                if(func_compare(key, m_buckets[hash].key)) {
+                    return &m_buckets[hash].value;
+                }
+
+                hash += 1;
+
+                /* Wrap */
+                if(hash >= m_buckets_allocated) {
+                    hash = 0;
+                }
+
+                /* Went through whole table and did not find key */
+                if(hash == hash_start) {
+                    return NULL;
+                }
+            }
+
+            return NULL;
+        }
+
         /* Resize table to the next power of 2 and rehash entries */
         void expand_table(void) {
             Bucket  *old_buckets = m_buckets;
