@@ -4,11 +4,9 @@
 #include <stdint.h>
 #include <malloc.h>
 #include <string.h>
-
-#if defined(MEH_DEBUG) 
 #include <assert.h>
+
 #include <stdio.h>
-#endif
 
 namespace meh {
     inline size_t next_pow_2(size_t num);
@@ -26,7 +24,7 @@ namespace meh {
         
         /* Calculate hash and mod to fit in the bucket array */
         uint32_t calc_hash(const TKey &key) const {
-            uint32_t hash = func_hash(key) % m_buckets_allocated;
+            uint32_t hash =  func_hash(key) % (m_buckets_allocated - 1);
             return hash;
         }
 
@@ -36,7 +34,18 @@ namespace meh {
             return (occupied_perc * 100.0) >= LOAD_FACTOR;
         }
 
-    public:
+        /* Rehash values from old table data */
+        void rehash_table(Bucket *buckets, size_t num_of_buckets) {
+            for(size_t bucket_index = 0; bucket_index < num_of_buckets; ++bucket_index) {
+                Bucket *bucket = buckets + bucket_index;
+
+                if(bucket->is_occupied) {
+                    this->insert(bucket->key, bucket->value);
+                }
+            }
+        }
+
+public:
         /* Intial size rounds to next power of two */
         Table(size_t init_size = 64) {
             init_size = next_pow_2(init_size);
@@ -48,14 +57,6 @@ namespace meh {
             m_buckets_allocated = init_size;
             m_buckets = (Bucket *)malloc(size_in_bytes);
             memset(m_buckets, 0, size_in_bytes);
-            
-#if defined(MEH_DEBUG)
-            fprintf(stdout, "Table created!\n");
-            fprintf(stdout, "- memory:      %lld\n", this->get_size_of_allocated_memory());
-            fprintf(stdout, "- buckets:     %lld\n", this->get_size_of_allocated_buckets());
-            fprintf(stdout, "- bucket size: %lld\n", this->get_size_of_bucket());
-            fprintf(stdout, "- memory ptr:  %p\n",   this->get_buckets_memory_ptr());
-#endif
         }
 
         /* Release allocated memory */
@@ -80,19 +81,16 @@ namespace meh {
             while(m_buckets[hash].is_occupied && !func_compare(key, m_buckets[hash].key)) {
                 hash += 1;
 
-#if defined(MEH_DEBUG)
                 _insert_collisions += 1;
-#endif
-             
+
                 /* Wrap */
                 if(hash >= m_buckets_allocated) {
                     hash = 0;
                 }
 
-                /* Went through whole table and did not free spot somehow */
+                /* Really shouldn't happen... */
                 if(hash == hash_start) {
                     assert(NULL);
-                    return NULL;
                 }
             }
 
@@ -149,6 +147,8 @@ namespace meh {
             size_t buckets_to_allocate = next_pow_2(old_buckets_allocated + 1);
             size_t size_in_bytes = buckets_to_allocate * sizeof(Bucket);
 
+            fprintf(stdout, "Expanding table from %llu buckets to %llu. At this time num of insert collisions: %u\n", old_buckets_allocated, buckets_to_allocate, _insert_collisions);
+
             m_buckets_allocated = buckets_to_allocate;
             m_buckets = (Bucket *)malloc(size_in_bytes);
             m_buckets_occupied = 0;
@@ -157,15 +157,6 @@ namespace meh {
             this->rehash_table(old_buckets, old_buckets_allocated);
 
             free(old_buckets);
-
-#if defined(MEH_DEBUG)
-            fprintf(stdout, "Table expanded from %lld to %lld | buckets_occupied: %d | allocates now %lld bytes (%.04f MB).\n", 
-                    old_buckets_allocated, 
-                    buckets_to_allocate, 
-                    m_buckets_occupied, 
-                    buckets_to_allocate * sizeof(Bucket), 
-                    double(buckets_to_allocate * sizeof(Bucket)) / 1024.0 / 1024.0);
-#endif
         }
 
         /* Check if value at key has been inserted */
@@ -206,8 +197,8 @@ namespace meh {
         /* When iterate_all returns false, the *key* and *value* may contain garbage value */
         struct Iterator {
             uint32_t iter_id = 0;
-            TKey     key     = 0;
-            TValue  *value   = NULL;
+            TKey     key;
+            TValue  *value;
         };
 
         /* *iter_id* must start at 0 and must not be modified */
@@ -237,22 +228,9 @@ namespace meh {
             }
         }
 
-#if defined(MEH_DEBUG)
+
         uint32_t _insert_collisions = 0;
-#endif
-
 private:
-        /* Rehash values from old table data */
-        void rehash_table(Bucket *buckets, size_t num_of_buckets) {
-            for(size_t bucket_index = 0; bucket_index < num_of_buckets; ++bucket_index) {
-                Bucket *bucket = buckets + bucket_index;
-
-                if(bucket->is_occupied) {
-                    this->insert(bucket->key, bucket->value);
-                }
-            }
-        }
-
         size_t  m_buckets_allocated;
         size_t  m_buckets_occupied;
         Bucket *m_buckets;
