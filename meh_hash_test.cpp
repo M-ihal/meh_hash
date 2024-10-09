@@ -32,6 +32,8 @@ int32_t pow(int32_t b, int32_t p) {
 
 int main(int argc, char *argv[]) {
     srand(time(NULL));
+    
+    // TEST
 
     for(int32_t i = 0; i < 10; ++i) {
         MehTable table;
