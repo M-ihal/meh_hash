@@ -9,22 +9,22 @@
 #include <stdio.h>
 
 namespace meh {
-    inline size_t next_pow_2(size_t num);
+    inline uint64_t next_pow_2(uint64_t num);
 
-    template <typename TKey, typename TValue, uint32_t (*func_hash)(const TKey &), bool (*func_compare)(const TKey &, const TKey &)>
+    template <typename TKey, typename TValue, uint64_t (*func_hash)(const TKey &), bool (*func_compare)(const TKey &, const TKey &)>
     class Table {
-        static constexpr double LOAD_FACTOR = 70.0;
+        static constexpr uint32_t LOAD_FACTOR = 70;
 
         /* Table data structure */
         struct Bucket {
-            bool     is_occupied;
-            TKey     key;
-            TValue   value;
+            bool   is_occupied;
+            TKey   key;
+            TValue value;
         };
         
         /* Calculate hash and mod to fit in the bucket array */
-        uint32_t calc_hash(const TKey &key) const {
-            uint32_t hash =  func_hash(key) % (m_buckets_allocated - 1);
+        uint64_t calc_hash(const TKey &key) const {
+            uint64_t hash = func_hash(key) % (m_buckets_allocated - 17); // @todo
             return hash;
         }
 
@@ -35,8 +35,8 @@ namespace meh {
         }
 
         /* Rehash values from old table data */
-        void rehash_table(Bucket *buckets, size_t num_of_buckets) {
-            for(size_t bucket_index = 0; bucket_index < num_of_buckets; ++bucket_index) {
+        void rehash_table(Bucket *buckets, uint64_t num_of_buckets) {
+            for(uint64_t bucket_index = 0; bucket_index < num_of_buckets; ++bucket_index) {
                 Bucket *bucket = buckets + bucket_index;
 
                 if(bucket->is_occupied) {
@@ -47,11 +47,11 @@ namespace meh {
 
 public:
         /* Intial size rounds to next power of two */
-        Table(size_t init_size = 64) {
+        Table(uint64_t init_size = 128) {
             init_size = next_pow_2(init_size);
-            init_size = init_size < 32 ? 32 : init_size;
+            init_size = init_size < 128 ? 128 : init_size;
 
-            size_t size_in_bytes = init_size * sizeof(Bucket);
+            uint64_t size_in_bytes = init_size * sizeof(Bucket);
 
             m_buckets_occupied  = 0;
             m_buckets_allocated = init_size;
@@ -75,8 +75,8 @@ public:
                 this->expand_table();
             }
 
-            uint32_t hash = this->calc_hash(key);
-            uint32_t hash_start = hash;
+            uint64_t hash = this->calc_hash(key);
+            uint64_t hash_start = hash;
 
             while(m_buckets[hash].is_occupied && !func_compare(key, m_buckets[hash].key)) {
                 hash += 1;
@@ -110,9 +110,11 @@ public:
         }
 
         /* Get value at key */
-        TValue *const find(const TKey &key) const {
-            uint32_t hash = this->calc_hash(key);
-            uint32_t hash_start = hash;
+        TValue *const find(const TKey &key) {
+            uint64_t hash = this->calc_hash(key);
+            uint64_t hash_start = hash;
+
+            _find_collisions = 0;
 
             while(true) {
                 if(!m_buckets[hash].is_occupied) {
@@ -124,6 +126,8 @@ public:
                 }
 
                 hash += 1;
+
+                _find_collisions += 1;
 
                 /* Wrap */
                 if(hash >= m_buckets_allocated) {
@@ -141,13 +145,13 @@ public:
 
         /* Resize table to the next power of 2 and rehash entries */
         void expand_table(void) {
-            Bucket *old_buckets = m_buckets;
-            size_t  old_buckets_allocated = m_buckets_allocated;
+            Bucket  *old_buckets = m_buckets;
+            uint64_t old_buckets_allocated = m_buckets_allocated;
 
-            size_t buckets_to_allocate = next_pow_2(old_buckets_allocated + 1);
-            size_t size_in_bytes = buckets_to_allocate * sizeof(Bucket);
+            uint64_t buckets_to_allocate = next_pow_2(old_buckets_allocated + 1);
+            uint64_t size_in_bytes = buckets_to_allocate * sizeof(Bucket);
 
-            fprintf(stdout, "Expanding table from %llu buckets to %llu. At this time num of insert collisions: %u\n", old_buckets_allocated, buckets_to_allocate, _insert_collisions);
+            // fprintf(stdout, "Expanding table from %llu buckets to %llu. At this time num of insert collisions: %u\n", old_buckets_allocated, buckets_to_allocate, _insert_collisions);
 
             m_buckets_allocated = buckets_to_allocate;
             m_buckets = (Bucket *)malloc(size_in_bytes);
@@ -165,27 +169,27 @@ public:
         }
 
         /* Size in bytes of allocated memory */
-        size_t get_size_of_allocated_memory(void) const {
+        uint64_t get_size_of_allocated_memory(void) const {
             return m_buckets_allocated * sizeof(Bucket);
         }
 
         /* Number of buckets allocated */
-        size_t get_size_of_allocated_buckets(void) const {
+        uint64_t get_size_of_allocated_buckets(void) const {
             return m_buckets_allocated;
         }
 
         /* Size in bytes of buckets occupied */
-        size_t get_size_of_occupied_memory(void) const {
+        uint64_t get_size_of_occupied_memory(void) const {
             return m_buckets_occupied * sizeof(Bucket);
         }
 
         /* Number of occupied buckets */ 
-        size_t get_size_of_occupied_buckets(void) const {
+        uint64_t get_size_of_occupied_buckets(void) const {
             return m_buckets_occupied;
         }
 
         /* Internal size of bucket */
-        size_t get_size_of_bucket(void) const {
+        uint64_t get_size_of_bucket(void) const {
             return sizeof(Bucket);
         }
 
@@ -196,7 +200,7 @@ public:
     
         /* When iterate_all returns false, the *key* and *value* may contain garbage value */
         struct Iterator {
-            uint32_t iter_id = 0;
+            uint64_t iter_id = 0;
             TKey     key;
             TValue  *value;
         };
@@ -228,17 +232,17 @@ public:
             }
         }
 
-
         uint32_t _insert_collisions = 0;
+        uint32_t _find_collisions   = 0; // Reseted on start of find() function
 private:
-        size_t  m_buckets_allocated;
-        size_t  m_buckets_occupied;
-        Bucket *m_buckets;
+        uint64_t  m_buckets_allocated;
+        uint64_t  m_buckets_occupied;
+        Bucket   *m_buckets;
     };
 
     /* Next power of 2 if isn't already power of 2 */
-    inline size_t next_pow_2(size_t num) {
-        size_t res = 1;
+    inline uint64_t next_pow_2(uint64_t num) {
+        uint64_t res = 1;
         while(res < num) {
             res <<= 1;
         }
