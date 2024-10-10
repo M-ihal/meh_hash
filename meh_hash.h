@@ -180,8 +180,6 @@ public:
             uint64_t buckets_to_allocate = next_pow_2(old_buckets_allocated + 1);
             uint64_t size_in_bytes = buckets_to_allocate * sizeof(Bucket);
 
-            // fprintf(stdout, "Expanding table from %llu buckets to %llu. At this time num of insert collisions: %u\n", old_buckets_allocated, buckets_to_allocate, _insert_collisions);
-
             m_buckets_allocated = buckets_to_allocate;
             m_buckets = (Bucket *)malloc(size_in_bytes);
             m_buckets_occupied = 0;
@@ -192,39 +190,33 @@ public:
             free(old_buckets);
         }
 
+        /* Rehashes the table with the same size @todo, when added removing elements */
+        void rehash_table(void) {
+            assert(NULL);
+        }
+
+        /* Clears the table but does not reallocate memory */
+        void clear_table(void) {
+            m_buckets_occupied = 0;
+            memset(m_buckets, 0, m_buckets_allocated * sizeof(Bucket));
+
+            _insert_collisions = 0;
+            _find_collisions = 0;
+        }
+
         /* Check if value at key has been inserted */
         bool contains(const TKey &key) const {
             return !!this->find(key);
         }
 
-        /* Size in bytes of allocated memory */
-        uint64_t get_size_of_allocated_memory(void) const {
-            return m_buckets_allocated * sizeof(Bucket);
-        }
-
-        /* Number of buckets allocated */
-        uint64_t get_size_of_allocated_buckets(void) const {
-            return m_buckets_allocated;
-        }
-
-        /* Size in bytes of buckets occupied */
-        uint64_t get_size_of_occupied_memory(void) const {
-            return m_buckets_occupied * sizeof(Bucket);
-        }
-
         /* Number of occupied buckets */ 
-        uint64_t get_size_of_occupied_buckets(void) const {
+        uint64_t get_count(void) const {
             return m_buckets_occupied;
         }
 
-        /* Internal size of bucket */
-        uint64_t get_size_of_bucket(void) const {
-            return sizeof(Bucket);
-        }
-
-        /* Temporary */
-        const void *const get_buckets_memory_ptr(void) const {
-            return m_buckets;
+        /* Number of buckets allocated */
+        uint64_t get_size(void) const {
+            return m_buckets_allocated;
         }
     
         /* When iterate_all returns false, the *key* and *value* may contain garbage value */
@@ -254,6 +246,7 @@ public:
             return false;
         }
 
+        /* Calls the macro on every found bucket */
         void call_on_every(void (*func)(TKey key, TValue *value)) {
             Iterator iter;
             while(this->iterate_all(iter)) {
