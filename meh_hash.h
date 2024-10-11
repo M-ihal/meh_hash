@@ -248,6 +248,7 @@ public:
 
         uint32_t _insert_collisions = 0;
         uint32_t _find_collisions   = 0; // Reset on start of find() function
+                                         //
 private:
         uint64_t  m_buckets_allocated;
         uint64_t  m_buckets_occupied;
