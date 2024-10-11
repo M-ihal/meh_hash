@@ -32,12 +32,7 @@ namespace meh {
 
         /* Check if the table should be expanded due to load factor */
         bool should_expand_table(void) {
-#if 0
-            double occupied_perc = (double)(m_buckets_occupied + 1) / (double)m_buckets_allocated;
-            return (occupied_perc * 100.0) >= LOAD_FACTOR;
-#else
             return m_buckets_occupied * 100 >= m_buckets_allocated * LOAD_FACTOR;
-#endif
         }
 
         /* Reallocate memory and rehash values from old table data */
@@ -174,11 +169,6 @@ public:
         /* Get pointer to the value at key */
         TValue *find(const TKey &key) {
             TValue *value = this->find_by_key(key);
-            return value;
-        }
-
-        const TValue *const find(const TKey &key) const {
-            const TValue *const value = this->find_by_key(key);
             return value;
         }
 
