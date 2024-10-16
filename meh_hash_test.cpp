@@ -12,6 +12,10 @@ int32_t pow(int32_t b, int32_t p) {
     return res;
 }
 
+const int *get(const meh::TableSimple<uint32_t, int *> &tab) {
+    return *tab.find(331);
+}
+
 int main(int argc, char *argv[]) {
     srand(time(NULL));
  
@@ -41,6 +45,7 @@ int main(int argc, char *argv[]) {
 
     {
         meh::TableSimple<uint32_t, int *> table;
+        const auto &_table = table;
 
         for(int32_t i = 0; i < 8000000; ++i) {
             table.insert((int32_t)(rand() % RAND_MAX) | ((int32_t)(rand() % RAND_MAX) << 16), (int *)rand());
@@ -54,6 +59,8 @@ int main(int argc, char *argv[]) {
         while(table.iterate_all(iter)) {
             // fprintf(stdout, "Found %p at %u !\n", *iter.value, iter.key);
         }
+
+        int *const *value = _table.find(4112);
     }
 
 
