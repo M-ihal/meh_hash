@@ -108,6 +108,12 @@ public:
         Table(void) = default;
         ~Table(void) = default;
 
+        /* @TODO : NOT IMPLEMENTED */
+        Table(const Table &) = delete;
+        Table &operator=(const Table &) = delete;
+        Table(Table &&) = default;
+        Table &operator=(Table &&) = default;
+
         /* Needs to be called only once when initializing or after destroying */
         void initialize_table(uint64_t init_size = 128) {
             init_size = next_pow_2(init_size);
